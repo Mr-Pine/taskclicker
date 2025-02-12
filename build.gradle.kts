@@ -2,6 +2,7 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 
 plugins {
     kotlin("jvm")
+    kotlin("plugin.serialization") version "2.1.10"
     id("org.jetbrains.compose")
     id("org.jetbrains.kotlin.plugin.compose")
 }
@@ -29,6 +30,8 @@ dependencies {
     implementation(compose.desktop.currentOs)
     implementation("me.bechberger:bpf:0.1.1-scx-enabled-SNAPSHOT")
     annotationProcessor("me.bechberger:bpf:0.1.1-scx-enabled-SNAPSHOT")
+    implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha12")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
 }
 
 tasks.withType<JavaCompile> {
@@ -38,6 +41,7 @@ tasks.withType<JavaCompile> {
 
 compose.desktop {
     application {
+        javaHome
         mainClass = "de.mr_pine.taskclicker.MainKt"
 
         nativeDistributions {

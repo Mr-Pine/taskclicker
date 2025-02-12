@@ -7,6 +7,9 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
 import de.mr_pine.taskclicker.scheduler.TaskClickerScheduler
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,14 +31,21 @@ fun App() {
     }
 }
 
-@OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
 fun main() = application {
-    LaunchedEffect(Unit) {
-        launch(newSingleThreadContext("Scheduler manager")) {
-            TaskClickerScheduler.aaaa()
+    Window(onCloseRequest = ::exitApplication, title = "TaskClicker") {
+        MaterialTheme {
+            val navController = rememberNavController()
+            val coroutineScope = rememberCoroutineScope()
+            val gameManager = remember { GameManager(coroutineScope, navController::navigate) }
+
+            NavHost(navController, startDestination = Launcher) {
+                composable<Launcher> {
+                    Launcher(gameManager)
+                }
+                composable<Game> {
+                    Game(gameManager)
+                }
+            }
         }
-    }
-    Window(onCloseRequest = ::exitApplication) {
-        App()
     }
 }
