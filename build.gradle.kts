@@ -32,6 +32,7 @@ dependencies {
     annotationProcessor("me.bechberger:bpf:0.1.1-scx-enabled-SNAPSHOT")
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha12")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
 }
 
 tasks.withType<JavaCompile> {
