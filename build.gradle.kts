@@ -28,6 +28,7 @@ dependencies {
     // (in a separate module for demo project and in testMain).
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
+    implementation(compose.components.resources)
     implementation("me.bechberger:bpf:0.1.1-scx-enabled-SNAPSHOT")
     annotationProcessor("me.bechberger:bpf:0.1.1-scx-enabled-SNAPSHOT")
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha12")
