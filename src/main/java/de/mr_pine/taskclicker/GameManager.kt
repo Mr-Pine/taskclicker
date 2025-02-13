@@ -1,6 +1,9 @@
 package de.mr_pine.taskclicker
 
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.datetime.Clock
 import java.io.File
@@ -25,6 +28,10 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
             )
         }
     }
+
+    var syscallBalance by mutableStateOf(0)
+    var extraArmCount by mutableStateOf(0)
+    var ebeeCount by mutableStateOf(5)
 
     fun scheduleTask(task: Task) {
         //TODO: Schedule

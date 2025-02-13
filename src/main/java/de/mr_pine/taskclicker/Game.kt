@@ -22,6 +22,7 @@ import de.mr_pine.taskclicker.generated.resources.Res
 import de.mr_pine.taskclicker.generated.resources.ebpf_icon
 import de.mr_pine.taskclicker.generated.resources.scx_logo
 import kotlinx.serialization.Serializable
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 @Serializable
@@ -44,18 +45,34 @@ fun Game(gameManager: GameManager, navigateBack: () -> Unit) {
             }
         }
         Row(modifier = Modifier.fillMaxWidth()) {
-            Image(painterResource(Res.drawable.ebpf_icon), "ebee", modifier = Modifier.heightIn(max = 32.dp))
-            Image(painterResource(Res.drawable.scx_logo), "six armed octopus", modifier = Modifier.heightIn(max = 32.dp))
             TaskArea(gameManager.activeTasks, gameManager::scheduleTask)
+            Column(modifier = Modifier) {
+                UpgradeCount(Res.drawable.scx_logo, gameManager.extraArmCount, if (gameManager.ebeeCount == 1) "extra arm" else "extra arms")
+                UpgradeCount(Res.drawable.ebpf_icon, gameManager.ebeeCount, if (gameManager.ebeeCount == 1) "eBee" else "eBees")
+            }
         }
+        Text("Current syscall balance: ${gameManager.syscallBalance}")
     }
 }
 
 @Composable
-fun TaskArea(tasks: List<Task>, taskClicked: (Task) -> Unit) {
+fun UpgradeCount(icon: DrawableResource, count: Int, name: String) {
+    Row(modifier = Modifier.padding(4.dp)) {
+        Box(modifier = Modifier.padding(end = 8.dp)) {
+            if (count > 0) {
+                Image(painterResource(icon), contentDescription = name, alpha = 0.5f, modifier = Modifier.size(24.dp).offset(4.dp, 4.dp))
+            }
+            Image(painterResource(icon), contentDescription = name, Modifier.size(24.dp))
+        }
+        Text("$count $name")
+    }
+}
+
+@Composable
+fun RowScope.TaskArea(tasks: List<Task>, taskClicked: (Task) -> Unit) {
     val shuffledRelevantTasks = tasks.sortedBy(Task::entry).take(ROWS * COLUMNS).shuffled()
     Column(
-        modifier = Modifier.fillMaxWidth().padding(4.dp),
+        modifier = Modifier.weight(1f).padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Top)
     ) {
         for (row in shuffledRelevantTasks.chunked(COLUMNS)) {
