@@ -85,6 +85,8 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
                     )
                 }, {
                     scheduler = it
+                }, {
+                    syscallBalance += it
                 }, pidBlacklist.toIntArray()
             )
         }

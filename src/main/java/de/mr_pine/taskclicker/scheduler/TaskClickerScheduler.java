@@ -4,6 +4,7 @@ import me.bechberger.ebpf.annotations.Size;
 import me.bechberger.ebpf.annotations.Type;
 import me.bechberger.ebpf.annotations.Unsigned;
 import me.bechberger.ebpf.annotations.bpf.BPF;
+import me.bechberger.ebpf.annotations.bpf.BPFFunction;
 import me.bechberger.ebpf.annotations.bpf.BPFMapDefinition;
 import me.bechberger.ebpf.annotations.bpf.Property;
 import me.bechberger.ebpf.bpf.BPFProgram;
@@ -11,10 +12,14 @@ import me.bechberger.ebpf.bpf.GlobalVariable;
 import me.bechberger.ebpf.bpf.Scheduler;
 import me.bechberger.ebpf.bpf.map.BPFBloomFilter;
 import me.bechberger.ebpf.bpf.map.BPFQueue;
+import me.bechberger.ebpf.runtime.BpfDefinitions;
+import me.bechberger.ebpf.runtime.PtDefinitions;
 import me.bechberger.ebpf.runtime.TaskDefinitions;
+import me.bechberger.ebpf.runtime.interfaces.SystemCallHooks;
 import me.bechberger.ebpf.type.Ptr;
 
 import java.util.function.Consumer;
+import java.util.function.IntConsumer;
 
 import static me.bechberger.ebpf.runtime.BpfDefinitions.bpf_task_from_pid;
 import static me.bechberger.ebpf.runtime.BpfDefinitions.bpf_task_release;
@@ -23,12 +28,16 @@ import static me.bechberger.ebpf.runtime.helpers.BPFHelpers.*;
 
 @BPF(license = "GPL")
 @Property(name = "sched_name", value = "taskclicker")
-public abstract class TaskClickerScheduler extends BPFProgram implements Scheduler {
+@Property(name = "timeout_ms", value = "2500")
+public abstract class TaskClickerScheduler extends BPFProgram implements Scheduler, SystemCallHooks {
 
     @Type
     public record ClickableTask(int pid, int tgid, int leaderPid, int leaderTgid, long enqFlags, @Size(16) byte[] comm,
                                 @Unsigned long nsEntry) {
     }
+
+    final GlobalVariable<Integer> syscalls = new GlobalVariable<>(0);
+    final GlobalVariable<Boolean> running = new GlobalVariable<>(false);
 
     @BPFMapDefinition(maxEntries = 4069)
     BPFQueue<ClickableTask> enqueued;
@@ -41,9 +50,25 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
 
     private static final int BLACKLISTED_DSQ_ID = 1;
 
+    @BPFFunction(
+            headerTemplate = "int BPF_PROG($name, struct pt_regs *regs, unsigned long number)",
+            lastStatement = "return 0;",
+            section = "raw_tracepoint/sys_enter",
+            autoAttach = true
+    )
+    public void syscall_counter(Ptr<PtDefinitions.pt_regs> regs, @Unsigned long number) {
+        syscalls.set(syscalls.get() + 1);
+    }
+
     @Override
     public int init() {
+        running.set(true);
         return scx_bpf_create_dsq(BLACKLISTED_DSQ_ID, -1);
+    }
+
+    @Override
+    public void exit(Ptr<scx_exit_info> ei) {
+        running.set(false); // TODO: Check for stall
     }
 
     @Override
@@ -83,13 +108,15 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
         scx_bpf_consume(BLACKLISTED_DSQ_ID); // TODO: After 6.15: renamed to scx_bpf_dsq_move_to_local
     }
 
-    void queueLoop(Consumer<ClickableTask> taskConsumer) {
-        while (isSchedulerAttachedProperly()) {
+    void queueLoop(Consumer<ClickableTask> taskConsumer, IntConsumer syscallUpdater) {
+        while (running.get()) {
             consumeAndThrow();
             ClickableTask task = enqueued.pop();
             while (task != null) {
                 taskConsumer.accept(task);
                 task = enqueued.pop();
+                syscallUpdater.accept(syscalls.get());
+                syscalls.set(0);
             }
         }
     }
@@ -101,16 +128,17 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
         scheduleInsertCount++;
     }
 
-    public static void run(Consumer<ClickableTask> taskConsumer, Consumer<TaskClickerScheduler> returner, int[] pidBlacklist) {
+    public static void run(Consumer<ClickableTask> taskConsumer, Consumer<TaskClickerScheduler> returner, IntConsumer syscallUpdater, int[] pidBlacklist) {
         try (var program = BPFProgram.load(TaskClickerScheduler.class)) {
             for (int pid : pidBlacklist) {
                 program.pidBlacklist.put(pid);
             }
             returner.accept(program);
 
+            program.rawTracepointAttach("syscall_counter", "sys_enter");
             program.attachScheduler();
             System.out.println("Attached scheduler");
-            program.queueLoop(taskConsumer);
+            program.queueLoop(taskConsumer, syscallUpdater);
         }
         System.out.println("Scheduler exited");
     }
