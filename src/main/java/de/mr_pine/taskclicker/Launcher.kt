@@ -21,7 +21,7 @@ object Launcher
 fun Launcher(gameManager: GameManager) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxSize().padding(24.dp)) {
         Text("TaskClicker", style = MaterialTheme.typography.h2, fontWeight = FontWeight.Bold)
-        Text("A first-click-first-served interactive gaming scheduler", style = MaterialTheme.typography.subtitle1, fontStyle = FontStyle.Italic)
+        Text("A first clicked, first served interactive gaming scheduler", style = MaterialTheme.typography.subtitle1, fontStyle = FontStyle.Italic)
         Button({gameManager.start()}, modifier = Modifier.padding(top = 16.dp)) {
             Text("Start")
         }
