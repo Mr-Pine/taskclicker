@@ -7,12 +7,12 @@ import me.bechberger.ebpf.annotations.bpf.BPF;
 import me.bechberger.ebpf.annotations.bpf.BPFFunction;
 import me.bechberger.ebpf.annotations.bpf.BPFMapDefinition;
 import me.bechberger.ebpf.annotations.bpf.Property;
+import me.bechberger.ebpf.bpf.BPFJ;
 import me.bechberger.ebpf.bpf.BPFProgram;
 import me.bechberger.ebpf.bpf.GlobalVariable;
 import me.bechberger.ebpf.bpf.Scheduler;
 import me.bechberger.ebpf.bpf.map.BPFBloomFilter;
 import me.bechberger.ebpf.bpf.map.BPFQueue;
-import me.bechberger.ebpf.runtime.BpfDefinitions;
 import me.bechberger.ebpf.runtime.PtDefinitions;
 import me.bechberger.ebpf.runtime.TaskDefinitions;
 import me.bechberger.ebpf.runtime.interfaces.SystemCallHooks;
@@ -28,7 +28,7 @@ import static me.bechberger.ebpf.runtime.helpers.BPFHelpers.*;
 
 @BPF(license = "GPL")
 @Property(name = "sched_name", value = "taskclicker")
-@Property(name = "timeout_ms", value = "2500")
+//@Property(name = "timeout_ms", value = "2500")
 public abstract class TaskClickerScheduler extends BPFProgram implements Scheduler, SystemCallHooks {
 
     @Type
@@ -57,13 +57,21 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
             autoAttach = true
     )
     public void syscall_counter(Ptr<PtDefinitions.pt_regs> regs, @Unsigned long number) {
-        syscalls.set(syscalls.get() + 1);
+        Ptr<TaskDefinitions.task_struct> task = bpf_get_current_task_btf();
+        if (!isBlacklisted(task)) {
+            BPFJ.sync_fetch_and_add(Ptr.of(syscalls.get()), 1);
+        }
     }
 
     @Override
     public int init() {
         running.set(true);
         return scx_bpf_create_dsq(BLACKLISTED_DSQ_ID, -1);
+    }
+
+    @BPFFunction
+    private boolean isBlacklisted(Ptr<TaskDefinitions.task_struct> task) {
+        return pidBlacklist.peek(task.val().pid) || pidBlacklist.peek(task.val().tgid) || pidBlacklist.peek(task.val().group_leader.val().pid) || pidBlacklist.peek(task.val().group_leader.val().tgid);
     }
 
     @Override
@@ -73,12 +81,11 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
 
     @Override
     public void enqueue(Ptr<TaskDefinitions.task_struct> p, long enq_flags) {
-        int pid = p.val().pid;
-        boolean is_blacklisted = pidBlacklist.peek(p.val().pid) || pidBlacklist.peek(p.val().tgid) || pidBlacklist.peek(p.val().group_leader.val().pid) || pidBlacklist.peek(p.val().group_leader.val().tgid);
+        boolean is_blacklisted = isBlacklisted(p);
 
         boolean isEnqueued = false;
         if (!is_blacklisted) {
-            ClickableTask clickableTask = new ClickableTask(pid, p.val().tgid, p.val().group_leader.val().pid, p.val().group_leader.val().tgid, enq_flags, "hello".getBytes(), bpf_ktime_get_tai_ns());
+            ClickableTask clickableTask = new ClickableTask(p.val().pid, p.val().tgid, p.val().group_leader.val().pid, p.val().group_leader.val().tgid, enq_flags, "hello".getBytes(), bpf_ktime_get_tai_ns());
             bpf_probe_read_kernel_str(Ptr.of(clickableTask.comm), 16, Ptr.of(p.val().comm));
             if (enqueued.push(clickableTask)) isEnqueued = true;
         }

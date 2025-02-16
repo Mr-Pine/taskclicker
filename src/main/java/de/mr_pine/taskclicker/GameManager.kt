@@ -5,14 +5,12 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import de.mr_pine.taskclicker.scheduler.TaskClickerScheduler
-import de.mr_pine.taskclicker.scheduler.TaskClickerScheduler.ClickableTask
 import kotlinx.coroutines.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
 import java.io.File
 import kotlin.jvm.optionals.getOrNull
-import kotlin.random.Random
-import kotlin.time.Duration.Companion.seconds
+import kotlin.time.Duration
 
 val ProcessHandle.name: String
     get() = File("/proc/${pid()}/comm").readText()
@@ -48,6 +46,9 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
         }
     }*/
     var scheduler: TaskClickerScheduler? = null
+    var failed by mutableStateOf(false)
+    var runtime by mutableStateOf(Duration.ZERO)
+    var lastPid by mutableStateOf(0)
 
     var syscallBalance by mutableStateOf(0)
     var extraArmCount by mutableStateOf(0)
@@ -55,6 +56,7 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
 
     fun scheduleTask(task: Task) {
         scheduler!!.schedule(task.tid)
+        lastPid = task.tid
         activeTasks.remove(task)
     }
 
@@ -70,25 +72,28 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
         navigate(Game)
         println("Starting without $pidBlacklist")
         coroutineScope.launch(newSingleThreadContext("Scheduler manager")) {
+            val start = Clock.System.now()
             TaskClickerScheduler.run(
                 {
-                    /*activeTasks.add(
+                    activeTasks.add(
                         Task(
-                            it.comm.asString(), it.pid, Instant.fromEpochMilliseconds(it.nsEntry / 1000)
-                        )
-                    )*/
-                    //println("$it: ${it.comm.asString()}")
-                    scheduleTask(
-                        Task(
-                            it.comm.asString(), it.pid, Instant.fromEpochMilliseconds(it.nsEntry / 1000)
+                            it.comm.asString(), it.pid, Instant.fromEpochMilliseconds(it.nsEntry / (1000 * 1000))
                         )
                     )
+                    //println("$it: ${it.comm.asString()}")
+                    if (false && activeTasks.size > 15) {
+                        scheduleTask(
+                            activeTasks.minBy(Task::entry)
+                        )
+                    }
                 }, {
                     scheduler = it
                 }, {
                     syscallBalance += it
                 }, pidBlacklist.toIntArray()
             )
+            failed = true
+            runtime = Clock.System.now() - start
         }
     }
 }
