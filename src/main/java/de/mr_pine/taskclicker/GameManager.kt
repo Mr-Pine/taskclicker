@@ -13,25 +13,23 @@ import kotlin.jvm.optionals.getOrNull
 import kotlin.time.Duration
 
 val ProcessHandle.name: String
-    get() = File("/proc/${pid()}/comm").readText()
+    get() = File("/proc/${pid()}/comm").readText().trim()
 val ProcessHandle.ancestors
     get() = generateSequence(this) { it.parent().getOrNull() }.toList()
 
 fun ProcessHandle.guessKThread() = info().command().isEmpty
 
 class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Unit) {
-    private val pidBlacklist = mutableStateListOf<Int>().apply {
+    val pidBlacklist = mutableStateListOf<Int>().apply {
         addAll(ProcessHandle.current().ancestors.map { it.pid().toInt() })
-        addAll(ProcessHandle.allProcesses().toList().filter { it.guessKThread() }.map(ProcessHandle::pid)
-            .map(Long::toInt))
-        addAll(ProcessHandle.allProcesses().toList().filter { it.name.lowercase().contains("hypr") }.flatMap(ProcessHandle::ancestors).map { it.pid().toInt() })
-        //addAll(ProcessHandle.allProcesses().toList().filter { it.name.lowercase().contains("idea") }.flatMap(ProcessHandle::ancestors).map { it.pid().toInt() })
-        //addAll(ProcessHandle.allProcesses().toList().filter { it.name.lowercase().contains("systemd") }.flatMap(ProcessHandle::ancestors).map { it.pid().toInt() })
-        addAll(ProcessHandle.allProcesses().toList().filter { it.name.lowercase().contains("xwayland") }.flatMap(ProcessHandle::ancestors).map { it.pid().toInt() })
-        /*addAll(
-            ProcessHandle.allProcesses().toList().filter(ProcessHandle::guessKThread).map(ProcessHandle::pid)
+        addAll(
+            ProcessHandle.allProcesses().toList().filter { it.guessKThread() }.map(ProcessHandle::pid)
                 .map(Long::toInt)
-        )*/
+        )
+        addAll(ProcessHandle.allProcesses().toList().filter { it.name.lowercase().contains("hypr") }
+            .flatMap(ProcessHandle::ancestors).map { it.pid().toInt() })
+        addAll(ProcessHandle.allProcesses().toList().filter { it.name.lowercase().contains("xwayland") }
+            .flatMap(ProcessHandle::ancestors).map { it.pid().toInt() })
     }
 
     val activeTasks = mutableStateListOf<Task>()/*.apply {
