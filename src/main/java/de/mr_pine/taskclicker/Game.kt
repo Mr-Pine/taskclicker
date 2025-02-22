@@ -5,14 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Icon
-import androidx.compose.material.IconButton
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -20,9 +16,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import de.mr_pine.taskclicker.generated.resources.Res
-import de.mr_pine.taskclicker.generated.resources.ebpf_icon
-import de.mr_pine.taskclicker.generated.resources.scx_logo
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.DrawableResource
@@ -43,7 +36,7 @@ fun Game(gameManager: GameManager, navigateBack: () -> Unit) {
                 Text("TaskClicker", style = MaterialTheme.typography.h3, fontWeight = FontWeight.Bold)
             }
             Row {
-                IconButton(navigateBack) {
+                IconButton(onClick = { gameManager.stop(); navigateBack() }) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, "")
                 }
             }
@@ -54,19 +47,24 @@ fun Game(gameManager: GameManager, navigateBack: () -> Unit) {
         Row(modifier = Modifier.fillMaxWidth()) {
             TaskArea(gameManager.activeTasks, gameManager.lastPid, gameManager::scheduleTask)
             Column(modifier = Modifier) {
-                UpgradeCount(
-                    Res.drawable.scx_logo,
-                    gameManager.extraArmCount,
-                    if (gameManager.ebeeCount == 1) "extra arm" else "extra arms"
-                )
-                UpgradeCount(
-                    Res.drawable.ebpf_icon,
-                    gameManager.ebeeCount,
-                    if (gameManager.ebeeCount == 1) "eBee" else "eBees"
-                )
+                for (powerup in gameManager.powerups) {
+                    UpgradeCount(
+                        powerup.kind.drawable,
+                        powerup.currentCount,
+                        powerup.kind.powerupName(powerup.currentCount)
+                    )
+                }
             }
         }
-        Text("Current syscall balance: ${gameManager.syscallBalance}")
+        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+            UpgradeButton(
+                gameManager.syscallBalance,
+                gameManager.powerups,
+                { gameManager.syscallBalance -= it },
+                { gameManager.isAutoMode = true },
+                { gameManager.isAutoMode = false }
+            )
+        }
     }
 }
 
@@ -113,5 +111,56 @@ fun RowScope.TaskArea(tasks: List<Task>, lastPid: Int, taskClicked: (Task) -> Un
                 }
             }
         }
+    }
+}
+
+@Composable
+fun UpgradeButton(
+    syscallBalance: Int,
+    powerups: List<Powerup>,
+    useSyscalls: (Int) -> Unit,
+    enterAutoMode: () -> Unit,
+    exitAutoMode: () -> Unit
+) {
+    val upgradeAvailable = powerups.any { it.nextCost?.let { it <= syscallBalance } == true }
+    var upgradeMenuOpen by remember { mutableStateOf(false) }
+
+    if (upgradeMenuOpen) {
+        AlertDialog(
+            onDismissRequest = { exitAutoMode(); upgradeMenuOpen = false },
+            title = { Text("Buy upgrades") },
+            text = {
+                Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
+                    for (powerup in powerups.filter { it.nextCost?.let { it <= syscallBalance } == true }) {
+                        ProvideTextStyle(MaterialTheme.typography.body1.copy(color = powerup.kind.foregroundColor)) {
+                            Column(
+                                modifier = Modifier
+                                    .width(180.dp)
+                                    .height(210.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(powerup.kind.color)
+                                    .clickable {
+                                        useSyscalls(powerup.buyNextUpgrade())
+                                    },
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("${powerup.nextCount}", modifier = Modifier.padding(top = 8.dp))
+                                Text(powerup.kind.powerupName(powerup.nextCount!!))
+                                Text("${powerup.nextCost} Syscalls")
+                                Image(
+                                    painterResource(powerup.kind.drawable),
+                                    "powerup",
+                                    modifier = Modifier.size(120.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { Button(onClick = { upgradeMenuOpen = false; exitAutoMode() }) { Text("Close") } })
+    }
+
+    Button(onClick = { enterAutoMode(); upgradeMenuOpen = true }, enabled = upgradeAvailable) {
+        Text("Syscall balance: $syscallBalance" + if (upgradeAvailable) ". Upgrade(s) available" else "")
     }
 }

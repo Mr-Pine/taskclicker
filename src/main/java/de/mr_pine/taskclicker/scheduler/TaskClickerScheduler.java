@@ -28,7 +28,7 @@ import static me.bechberger.ebpf.runtime.helpers.BPFHelpers.*;
 
 @BPF(license = "GPL")
 @Property(name = "sched_name", value = "taskclicker")
-//@Property(name = "timeout_ms", value = "2500")
+//@Property(name = "timeout_ms", value = "10000")
 public abstract class TaskClickerScheduler extends BPFProgram implements Scheduler, SystemCallHooks {
 
     @Type
@@ -142,8 +142,8 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
             }
             returner.accept(program);
 
-            program.rawTracepointAttach("syscall_counter", "sys_enter");
             program.attachScheduler();
+            program.rawTracepointAttach("syscall_counter", "sys_enter");
             System.out.println("Attached scheduler");
             program.queueLoop(taskConsumer, syscallUpdater);
         }

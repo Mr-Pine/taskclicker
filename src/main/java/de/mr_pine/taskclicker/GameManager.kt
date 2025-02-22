@@ -43,24 +43,19 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
             )
         }
     }*/
+    var isAutoMode = false
     var scheduler: TaskClickerScheduler? = null
     var failed by mutableStateOf(false)
     var runtime by mutableStateOf(Duration.ZERO)
     var lastPid by mutableStateOf(0)
 
-    var syscallBalance by mutableStateOf(0)
-    var extraArmCount by mutableStateOf(0)
-    var ebeeCount by mutableStateOf(5)
+    var syscallBalance by mutableStateOf(5000)
+    val powerups = listOf(Powerup(Powerup.Companion.POWERUPS.ARM, 0), Powerup(Powerup.Companion.POWERUPS.BEE, 5))
 
     fun scheduleTask(task: Task) {
         scheduler!!.schedule(task.tid)
         lastPid = task.tid
         activeTasks.remove(task)
-    }
-
-    fun getProcesses(): List<String> {
-        val processes = ProcessHandle.allProcesses()
-        return processes.toList().filter { !it.guessKThread() }.map { "${it.pid()}: ${it.name}" }
     }
 
     private fun ByteArray.asString() = takeWhile { it.toInt() != 0 }.map { it.toInt().toChar() }.joinToString("")
@@ -78,8 +73,7 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
                             it.comm.asString(), it.pid, Instant.fromEpochMilliseconds(it.nsEntry / (1000 * 1000))
                         )
                     )
-                    //println("$it: ${it.comm.asString()}")
-                    if (false && activeTasks.size > 15) {
+                    if (isAutoMode) {
                         scheduleTask(
                             activeTasks.minBy(Task::entry)
                         )
@@ -87,11 +81,17 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
                 }, {
                     scheduler = it
                 }, {
-                    syscallBalance += it
+                    if (!isAutoMode) {
+                        syscallBalance += it
+                    }
                 }, pidBlacklist.toIntArray()
             )
             failed = true
             runtime = Clock.System.now() - start
         }
+    }
+
+    fun stop() {
+        scheduler?.close()
     }
 }
