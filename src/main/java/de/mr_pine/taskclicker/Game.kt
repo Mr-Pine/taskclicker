@@ -90,7 +90,7 @@ fun UpgradeCount(icon: DrawableResource, count: Int, name: String) {
 fun RowScope.TaskArea(tasks: List<Task>, lastPid: Int, taskClicked: (Task) -> Unit) {
     val now = remember(lastPid, tasks.size >= ROWS * COLUMNS) { Clock.System.now() }
     val shuffledRelevantTasks =
-        remember(lastPid, tasks.size >= ROWS * COLUMNS) { tasks.sortedBy(Task::entry).take(ROWS * COLUMNS).shuffled() }
+        remember(tasks.take(ROWS * COLUMNS)) { tasks.sortedBy(Task::entry).take(ROWS * COLUMNS).shuffled() }
     Column(
         modifier = Modifier.weight(1f).padding(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.Top)
@@ -101,7 +101,7 @@ fun RowScope.TaskArea(tasks: List<Task>, lastPid: Int, taskClicked: (Task) -> Un
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.clickable { taskClicked(task) }.fillMaxWidth().weight(1f)
-                            .heightIn(min = 96.dp).clip(RoundedCornerShape(6.dp)).background(task.color)
+                            .heightIn(min = 120.dp).clip(RoundedCornerShape(6.dp)).background(task.color)
                             .padding(8.dp)
                     ) {
                         Text(task.name, textAlign = TextAlign.Center)
@@ -161,6 +161,6 @@ fun UpgradeButton(
     }
 
     Button(onClick = { enterAutoMode(); upgradeMenuOpen = true }, enabled = upgradeAvailable) {
-        Text("Syscall balance: $syscallBalance" + if (upgradeAvailable) ". Upgrade(s) available" else "")
+        Text("Syscall balance: $syscallBalance. " + if (upgradeAvailable) "Upgrade(s) available" else "Next upgrade at ${powerups.mapNotNull { it.nextCost }.min()}")
     }
 }

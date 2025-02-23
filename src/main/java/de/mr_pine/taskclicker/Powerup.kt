@@ -24,9 +24,33 @@ data class Powerup(val kind: POWERUPS, var currentCount: Int) {
     companion object {
         data class Upgrade(val count: Int, val cost: Int)
 
-        enum class POWERUPS(val upgrades: List<Upgrade>, val drawable: DrawableResource, val powerupName: (Int) -> String, val color: Color, val foregroundColor: Color) {
-            ARM(listOf(Upgrade(1, 5000)), Res.drawable.scx_logo, { if (it == 1) "extra arm" else "extra arms" }, Color(0x0F, 0x61, 0x55), Color.White),
-            BEE(listOf(Upgrade(1, 5000)), Res.drawable.ebpf_icon, { if (it == 1) "eBee" else "eBees" }, Color(0xFF, 0xE1, 0x00), Color.Black);
+        enum class POWERUPS(
+            val upgrades: List<Upgrade>,
+            val drawable: DrawableResource,
+            val powerupName: (Int) -> String,
+            val color: Color,
+            val foregroundColor: Color
+        ) {
+            ARM(
+                listOf(
+                    Upgrade(1, 2000), Upgrade(1, 2500), Upgrade(1, 3000), Upgrade(1, 4000), Upgrade(2, 5000), Upgrade(2, 8000), Upgrade(5, 10000)
+                ) + generateSequence(Upgrade(5, 12000)) { Upgrade(it.count * 2, it.cost + 1000) }.take(500),
+                Res.drawable.scx_logo,
+                { if (it == 1) "extra arm" else "extra arms" },
+                Color(0x0F, 0x61, 0x55),
+                Color.White
+            ),
+            BEE(
+                listOf(
+                    Upgrade(1, 8000), Upgrade(1, 10000), Upgrade(1, 12000), Upgrade(2, 14000)
+                ) + generateSequence(
+                    Upgrade(4, 20000)
+                ) { Upgrade(it.count * 2, (it.cost * 1.1).toInt()) }.take(500),
+                Res.drawable.ebpf_icon,
+                { if (it == 1) "eBee" else "eBees" },
+                Color(0xFF, 0xE1, 0x00),
+                Color.Black
+            );
         }
     }
 }

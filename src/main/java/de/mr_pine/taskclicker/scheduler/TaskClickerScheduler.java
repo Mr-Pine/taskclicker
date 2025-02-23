@@ -7,10 +7,7 @@ import me.bechberger.ebpf.annotations.bpf.BPF;
 import me.bechberger.ebpf.annotations.bpf.BPFFunction;
 import me.bechberger.ebpf.annotations.bpf.BPFMapDefinition;
 import me.bechberger.ebpf.annotations.bpf.Property;
-import me.bechberger.ebpf.bpf.BPFJ;
-import me.bechberger.ebpf.bpf.BPFProgram;
-import me.bechberger.ebpf.bpf.GlobalVariable;
-import me.bechberger.ebpf.bpf.Scheduler;
+import me.bechberger.ebpf.bpf.*;
 import me.bechberger.ebpf.bpf.map.BPFBloomFilter;
 import me.bechberger.ebpf.bpf.map.BPFQueue;
 import me.bechberger.ebpf.runtime.PtDefinitions;
@@ -84,7 +81,7 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
         boolean is_blacklisted = isBlacklisted(p);
 
         boolean isEnqueued = false;
-        if (!is_blacklisted) {
+        if (!is_blacklisted && p.val().mm != null) {
             ClickableTask clickableTask = new ClickableTask(p.val().pid, p.val().tgid, p.val().group_leader.val().pid, p.val().group_leader.val().tgid, enq_flags, "hello".getBytes(), bpf_ktime_get_tai_ns());
             bpf_probe_read_kernel_str(Ptr.of(clickableTask.comm), 16, Ptr.of(p.val().comm));
             if (enqueued.push(clickableTask)) isEnqueued = true;
@@ -133,6 +130,20 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
     public void schedule(int pid) {
         dispatched.push(pid);
         scheduleInsertCount++;
+    }
+
+    public void updateBlacklist(int[] pids) {
+        for (int pid : pids) {
+            pidBlacklist.put(pid);
+        }
+    }
+
+    public boolean isRunning() {
+        try {
+            return running.get();
+        } catch (BPFError e) {
+            return false;
+        }
     }
 
     public static void run(Consumer<ClickableTask> taskConsumer, Consumer<TaskClickerScheduler> returner, IntConsumer syscallUpdater, int[] pidBlacklist) {
