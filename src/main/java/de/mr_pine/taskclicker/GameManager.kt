@@ -27,8 +27,7 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
     val pidBlacklist = mutableStateListOf<Int>().apply {
         addAll(ProcessHandle.current().ancestors.map { it.pid().toInt() })
         addAll(
-            ProcessHandle.allProcesses().toList().filter { it.guessKThread() }.map(ProcessHandle::pid)
-                .map(Long::toInt)
+            ProcessHandle.allProcesses().toList().filter { it.guessKThread() }.map(ProcessHandle::pid).map(Long::toInt)
         )
         addAll(ProcessHandle.allProcesses().toList().filter { it.name.lowercase().contains("hypr") }
             .flatMap(ProcessHandle::ancestors).map { it.pid().toInt() })
@@ -43,7 +42,7 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
     var runtime by mutableStateOf(Duration.ZERO)
     var lastPid by mutableStateOf(0)
 
-    var syscallBalance by mutableStateOf(400000)
+    var syscallBalance by mutableStateOf(0)
     val powerups = listOf(Powerup(Powerup.Companion.POWERUPS.ARM, 0), Powerup(Powerup.Companion.POWERUPS.BEE, 0))
 
     fun scheduleTask(task: Task, isAutoOrBee: Boolean = false) {
@@ -57,12 +56,11 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
 
     private fun scheduleRandomTasks(count: Int, from: Int = 0) {
         repeat(count) {
-            try {
-                if (activeTasks.size > 0 && from < activeTasks.size) {
-                    val task = activeTasks[Random.Default.nextInt(from, activeTasks.size)]
-                    scheduleTask(task, true)
-                }
-            } catch (e: Exception) {}
+            if (activeTasks.size > 0 && from < activeTasks.size) {
+                val task =
+                    activeTasks[Random.Default.nextInt(if (activeTasks.size < from) 0 else from, activeTasks.size)]
+                scheduleTask(task, true)
+            }
         }
     }
 
@@ -72,25 +70,35 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
     fun start() {
         navigate(Game)
         println("Starting without $pidBlacklist")
-        nameBlacklist =
-            pidBlacklist.mapNotNull {
-                ProcessHandle.of(it.toLong()).getOrNull()?.name?.lowercase()
-                    ?.let { if (it.length < 5) it else it.substring(0, 5) }
-            }
+        nameBlacklist = pidBlacklist.mapNotNull {
+            ProcessHandle.of(it.toLong()).getOrNull()?.name?.lowercase()
+                ?.let { if (it.length < 5) it else it.substring(0, 5) }
+        }
         coroutineScope.launch(newSingleThreadContext("Scheduler manager")) {
             val start = Clock.System.now()
+            var beeStart = start - 2.seconds
+            var beeCount = 0
             TaskClickerScheduler.run(
                 {
-                    activeTasks.add(
-                        Task(
-                            it.comm.asString(), it.pid, Instant.fromEpochMilliseconds(it.nsEntry / (1000 * 1000))
-                        )
-                    )
-                    if (isAutoMode) {
-                        scheduleTask(
-                            activeTasks.minBy(Task::entry),
-                            true
-                        )
+                    val task =
+                        Task(it.comm.asString(), it.pid, Instant.fromEpochMilliseconds(it.nsEntry / (1000 * 1000)))
+
+                    val now = Clock.System.now()
+                    if (now - beeStart > 1.seconds) {
+                        beeStart = now
+                        beeCount = powerups.find { it.kind == Powerup.Companion.POWERUPS.BEE }!!.currentCount
+                    }
+
+                    if (beeCount > 0) {
+                        beeCount--
+                        scheduleTask(task)
+                    } else {
+                        activeTasks.add(task)
+                        if (isAutoMode) {
+                            scheduleTask(
+                                activeTasks.minBy(Task::entry), true
+                            )
+                        }
                     }
                 }, {
                     scheduler = it
@@ -104,31 +112,15 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
             runtime = Clock.System.now() - start
         }
         coroutineScope.launch(Dispatchers.IO) {
-            while (scheduler?.isRunning != true) {
-                yield()
-            }
-            while (scheduler?.isRunning == true) {
-                val beeCount = powerups.find { it.kind == Powerup.Companion.POWERUPS.BEE }!!.currentCount
-                if (beeCount != 0 && !isAutoMode) {
-                    scheduleRandomTasks(1)
-                    delay(5.seconds / beeCount)
-                } else {
-                    delay(1.seconds)
-                }
-            }
-        }
-        coroutineScope.launch(Dispatchers.IO) {
             while (true) {
                 if (scheduler?.isRunning == true) {
                     val kthreads =
                         ProcessHandle.allProcesses().filter(ProcessHandle::guessKThread).map(ProcessHandle::pid)
                             .map(Long::toInt).toList()
-                    val named = ProcessHandle.allProcesses()
-                        .filter {
-                            nameBlacklist.contains(it.name.let { if (it.length < 5) it else it.substring(0, 5) }
-                                .lowercase())
-                        }.map { it.pid().toInt() }
-                        .toList()
+                    val named = ProcessHandle.allProcesses().filter {
+                        nameBlacklist.contains(it.name.let { if (it.length < 5) it else it.substring(0, 5) }
+                            .lowercase())
+                    }.map { it.pid().toInt() }.toList()
                     scheduler!!.updateBlacklist((kthreads + named).toIntArray())
                 }
                 delay(5.seconds)

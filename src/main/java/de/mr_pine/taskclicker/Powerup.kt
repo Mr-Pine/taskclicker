@@ -33,8 +33,8 @@ data class Powerup(val kind: POWERUPS, var currentCount: Int) {
         ) {
             ARM(
                 listOf(
-                    Upgrade(1, 2000), Upgrade(1, 2500), Upgrade(1, 3000), Upgrade(1, 4000), Upgrade(2, 5000), Upgrade(2, 8000), Upgrade(5, 10000)
-                ) + generateSequence(Upgrade(5, 12000)) { Upgrade(it.count * 2, it.cost + 1000) }.take(500),
+                    Upgrade(1, 2000), Upgrade(1, 2000), Upgrade(1, 2100), Upgrade(1, 2500), Upgrade(2, 3000), Upgrade(2, 3500), Upgrade(5, 5000)
+                ) + generateSequence(Upgrade(5, 5000)) { Upgrade(it.count * 2, it.cost + 1000) }.take(500),
                 Res.drawable.scx_logo,
                 { if (it == 1) "extra arm" else "extra arms" },
                 Color(0x0F, 0x61, 0x55),
@@ -42,9 +42,9 @@ data class Powerup(val kind: POWERUPS, var currentCount: Int) {
             ),
             BEE(
                 listOf(
-                    Upgrade(1, 8000), Upgrade(1, 10000), Upgrade(1, 12000), Upgrade(2, 14000)
+                    Upgrade(1, 4000), Upgrade(1, 5000), Upgrade(1, 6000), Upgrade(2, 8000)
                 ) + generateSequence(
-                    Upgrade(4, 20000)
+                    Upgrade(4, 10000)
                 ) { Upgrade(it.count * 2, (it.cost * 1.1).toInt()) }.take(500),
                 Res.drawable.ebpf_icon,
                 { if (it == 1) "eBee" else "eBees" },
