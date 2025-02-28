@@ -28,6 +28,7 @@ data class Powerup(val kind: POWERUPS, var currentCount: Int) {
             val upgrades: List<Upgrade>,
             val drawable: DrawableResource,
             val powerupName: (Int) -> String,
+            val description: String,
             val color: Color,
             val foregroundColor: Color
         ) {
@@ -37,6 +38,7 @@ data class Powerup(val kind: POWERUPS, var currentCount: Int) {
                 ) + generateSequence(Upgrade(5, 5000)) { Upgrade(it.count * 2, it.cost + 1000) }.take(500),
                 Res.drawable.scx_logo,
                 { if (it == 1) "extra arm" else "extra arms" },
+                "An extra arm for your six-armed octopus. Per arm your click will schedule one more process.",
                 Color(0x0F, 0x61, 0x55),
                 Color.White
             ),
@@ -48,6 +50,7 @@ data class Powerup(val kind: POWERUPS, var currentCount: Int) {
                 ) { Upgrade(it.count * 2, (it.cost * 1.1).toInt()) }.take(500),
                 Res.drawable.ebpf_icon,
                 { if (it == 1) "eBee" else "eBees" },
+                "Dispatch a busy eBee into the kernel to schedule one task every second for you.",
                 Color(0xFF, 0xE1, 0x00),
                 Color.Black
             );

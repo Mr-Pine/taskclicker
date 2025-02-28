@@ -13,9 +13,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import kotlinx.datetime.Clock
 import kotlinx.serialization.Serializable
 import org.jetbrains.compose.resources.DrawableResource
@@ -128,6 +130,8 @@ fun UpgradeButton(
     if (upgradeMenuOpen) {
         AlertDialog(
             onDismissRequest = { exitAutoMode(); upgradeMenuOpen = false },
+            modifier = Modifier.width(550.dp),
+            properties = DialogProperties(usePlatformDefaultWidth = false),
             title = { Text("Buy upgrades") },
             text = {
                 Row(horizontalArrangement = Arrangement.SpaceEvenly, modifier = Modifier.fillMaxWidth()) {
@@ -135,8 +139,8 @@ fun UpgradeButton(
                         ProvideTextStyle(MaterialTheme.typography.body1.copy(color = powerup.kind.foregroundColor)) {
                             Column(
                                 modifier = Modifier
-                                    .width(180.dp)
-                                    .height(210.dp)
+                                    .width(200.dp)
+                                    .height(300.dp)
                                     .clip(RoundedCornerShape(8.dp))
                                     .background(powerup.kind.color)
                                     .clickable {
@@ -146,11 +150,19 @@ fun UpgradeButton(
                             ) {
                                 Text("${powerup.nextCount}", modifier = Modifier.padding(top = 8.dp))
                                 Text(powerup.kind.powerupName(powerup.nextCount!!))
-                                Text("${powerup.nextCost} Syscalls")
+                                Text("${powerup.nextCost}/${syscallBalance} Syscalls")
                                 Image(
                                     painterResource(powerup.kind.drawable),
                                     "powerup",
                                     modifier = Modifier.size(120.dp)
+                                )
+                                Text(
+                                    powerup.kind.description,
+                                    textAlign = TextAlign.Center,
+                                    fontStyle = FontStyle.Italic,
+                                    style = MaterialTheme.typography.caption,
+                                    color = powerup.kind.foregroundColor,
+                                    modifier = Modifier.padding(top = 8.dp)
                                 )
                             }
                         }
@@ -161,6 +173,10 @@ fun UpgradeButton(
     }
 
     Button(onClick = { enterAutoMode(); upgradeMenuOpen = true }, enabled = upgradeAvailable) {
-        Text("Syscall balance: $syscallBalance. " + if (upgradeAvailable) "Upgrade(s) available" else "Next upgrade at ${powerups.mapNotNull { it.nextCost }.min()}")
+        Text(
+            "Syscall balance: $syscallBalance. " + if (upgradeAvailable) "Upgrade(s) available" else "Next upgrade at ${
+                powerups.mapNotNull { it.nextCost }.min()
+            }"
+        )
     }
 }

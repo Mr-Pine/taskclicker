@@ -69,7 +69,6 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
     @OptIn(ExperimentalCoroutinesApi::class, DelicateCoroutinesApi::class)
     fun start() {
         navigate(Game)
-        println("Starting without $pidBlacklist")
         nameBlacklist = pidBlacklist.mapNotNull {
             ProcessHandle.of(it.toLong()).getOrNull()?.name?.lowercase()
                 ?.let { if (it.length < 5) it else it.substring(0, 5) }
