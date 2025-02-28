@@ -63,6 +63,7 @@ fun Game(gameManager: GameManager, navigateBack: () -> Unit) {
                 gameManager.syscallBalance,
                 gameManager.powerups,
                 { gameManager.syscallBalance -= it },
+                gameManager::addBee,
                 { gameManager.isAutoMode = true },
                 { gameManager.isAutoMode = false }
             )
@@ -121,6 +122,7 @@ fun UpgradeButton(
     syscallBalance: Int,
     powerups: List<Powerup>,
     useSyscalls: (Int) -> Unit,
+    addBee: () -> Unit,
     enterAutoMode: () -> Unit,
     exitAutoMode: () -> Unit
 ) {
@@ -145,6 +147,9 @@ fun UpgradeButton(
                                     .background(powerup.kind.color)
                                     .clickable {
                                         useSyscalls(powerup.buyNextUpgrade())
+                                        if (powerup.kind == Powerup.Companion.POWERUPS.BEE) {
+                                            addBee()
+                                        }
                                     },
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {

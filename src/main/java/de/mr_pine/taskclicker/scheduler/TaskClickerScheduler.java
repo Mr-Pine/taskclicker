@@ -15,6 +15,7 @@ import me.bechberger.ebpf.runtime.TaskDefinitions;
 import me.bechberger.ebpf.runtime.interfaces.SystemCallHooks;
 import me.bechberger.ebpf.type.Ptr;
 
+import java.awt.font.GlyphJustificationInfo;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -35,6 +36,11 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
 
     final GlobalVariable<Integer> syscalls = new GlobalVariable<>(0);
     final GlobalVariable<Boolean> running = new GlobalVariable<>(false);
+
+    public final GlobalVariable<Integer> beeCount = new GlobalVariable<>(0);
+
+    final GlobalVariable<Integer> remainingBees = new GlobalVariable<>(0);
+    final GlobalVariable<Long> beeTime = new GlobalVariable<>(0L);
 
     @BPFMapDefinition(maxEntries = 4069)
     BPFQueue<ClickableTask> enqueued;
@@ -80,11 +86,22 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
     public void enqueue(Ptr<TaskDefinitions.task_struct> p, long enq_flags) {
         boolean is_blacklisted = isBlacklisted(p);
 
+
         boolean isEnqueued = false;
         if (!is_blacklisted && p.val().mm != null) {
-            ClickableTask clickableTask = new ClickableTask(p.val().pid, p.val().tgid, p.val().group_leader.val().pid, p.val().group_leader.val().tgid, enq_flags, "hello".getBytes(), bpf_ktime_get_tai_ns());
-            bpf_probe_read_kernel_str(Ptr.of(clickableTask.comm), 16, Ptr.of(p.val().comm));
-            if (enqueued.push(clickableTask)) isEnqueued = true;
+
+            if (bpf_ktime_get_tai_ns() - beeTime.get() > 1000 * 1000 * 1000) {
+                beeTime.set(bpf_ktime_get_tai_ns());
+
+                remainingBees.set(beeCount.get());
+            }
+            if (remainingBees.get() > 0) {
+                remainingBees.set(remainingBees.get() - 1);
+            } else {
+                ClickableTask clickableTask = new ClickableTask(p.val().pid, p.val().tgid, p.val().group_leader.val().pid, p.val().group_leader.val().tgid, enq_flags, "hello".getBytes(), bpf_ktime_get_tai_ns());
+                bpf_probe_read_kernel_str(Ptr.of(clickableTask.comm), 16, Ptr.of(p.val().comm));
+                if (enqueued.push(clickableTask)) isEnqueued = true;
+            }
         }
 
         if (!isEnqueued) {
