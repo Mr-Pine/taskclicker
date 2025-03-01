@@ -88,23 +88,13 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
                     val task =
                         Task(it.comm.asString(), it.pid, Instant.fromEpochMilliseconds(it.nsEntry / (1000 * 1000)))
 
-                    /*val now = Clock.System.now()
-                    if (now - beeStart > 1.seconds) {
-                        beeStart = now
-                        beeCount = powerups.find { it.kind == Powerup.Companion.POWERUPS.BEE }!!.currentCount
-                    }
 
-                    /if (beeCount > 0) {
-                        beeCount--
-                        scheduleTask(task)
-                    } else {*/
                     activeTasks.add(task)
                     if (isAutoMode) {
                         scheduleTask(
                             activeTasks.minBy(Task::entry), true
                         )
                     }
-                    //}
                 }, {
                     scheduler = it
                 }, {

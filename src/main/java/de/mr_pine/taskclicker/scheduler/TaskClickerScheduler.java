@@ -36,7 +36,7 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
     final GlobalVariable<Integer> syscalls = new GlobalVariable<>(0);
     final GlobalVariable<Boolean> running = new GlobalVariable<>(false);
 
-    public final GlobalVariable<Integer> beeCount = new GlobalVariable<>(80000);
+    public final GlobalVariable<Integer> beeCount = new GlobalVariable<>(0);
 
     final GlobalVariable<Integer> remainingBees = new GlobalVariable<>(0);
     final GlobalVariable<Long> beeTime = new GlobalVariable<>(0L);
