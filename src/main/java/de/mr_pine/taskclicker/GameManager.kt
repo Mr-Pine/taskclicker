@@ -8,11 +8,13 @@ import de.mr_pine.taskclicker.scheduler.TaskClickerScheduler
 import kotlinx.coroutines.*
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
+import me.bechberger.ebpf.bpf.BPFError
 import java.io.File
 import kotlin.jvm.optionals.getOrNull
 import kotlin.random.Random
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.microseconds
+import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
 
 val ProcessHandle.name: String
@@ -96,12 +98,12 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
                         beeCount--
                         scheduleTask(task)
                     } else {*/
-                        activeTasks.add(task)
-                        if (isAutoMode) {
-                            scheduleTask(
-                                activeTasks.minBy(Task::entry), true
-                            )
-                        }
+                    activeTasks.add(task)
+                    if (isAutoMode) {
+                        scheduleTask(
+                            activeTasks.minBy(Task::entry), true
+                        )
+                    }
                     //}
                 }, {
                     scheduler = it
@@ -113,6 +115,22 @@ class GameManager(val coroutineScope: CoroutineScope, val navigate: (Any) -> Uni
             )
             failed = true
             runtime = Clock.System.now() - start
+        }
+        coroutineScope.launch(Dispatchers.IO) {
+            while (scheduler?.isRunning != true) {
+            }
+            while (scheduler!!.isRunning) {
+                if (!isAutoMode) {
+                    syscallBalance += scheduler!!.syscalls + 1
+                }
+                if (activeTasks.isNotEmpty()) {
+                    delay(100.milliseconds)
+                } else {
+                    delay(10.milliseconds)
+                }
+            }
+            println("Done")
+            System.out.flush()
         }
         coroutineScope.launch(Dispatchers.IO) {
             while (true) {

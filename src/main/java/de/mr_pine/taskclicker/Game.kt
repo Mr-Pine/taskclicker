@@ -64,7 +64,7 @@ fun Game(gameManager: GameManager, navigateBack: () -> Unit) {
                 gameManager.powerups,
                 { gameManager.syscallBalance -= it },
                 gameManager::addBee,
-                { gameManager.isAutoMode = true },
+                {},
                 { gameManager.isAutoMode = false }
             )
         }

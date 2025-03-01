@@ -15,7 +15,6 @@ import me.bechberger.ebpf.runtime.TaskDefinitions;
 import me.bechberger.ebpf.runtime.interfaces.SystemCallHooks;
 import me.bechberger.ebpf.type.Ptr;
 
-import java.awt.font.GlyphJustificationInfo;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -37,7 +36,7 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
     final GlobalVariable<Integer> syscalls = new GlobalVariable<>(0);
     final GlobalVariable<Boolean> running = new GlobalVariable<>(false);
 
-    public final GlobalVariable<Integer> beeCount = new GlobalVariable<>(0);
+    public final GlobalVariable<Integer> beeCount = new GlobalVariable<>(80000);
 
     final GlobalVariable<Integer> remainingBees = new GlobalVariable<>(0);
     final GlobalVariable<Long> beeTime = new GlobalVariable<>(0L);
@@ -136,10 +135,15 @@ public abstract class TaskClickerScheduler extends BPFProgram implements Schedul
             while (task != null) {
                 taskConsumer.accept(task);
                 task = enqueued.pop();
-                syscallUpdater.accept(syscalls.get());
-                syscalls.set(0);
+                syscallUpdater.accept(getSyscalls());
             }
         }
+    }
+
+    public int getSyscalls() {
+        int syscallCount = syscalls.get();
+        syscalls.set(0);
+        return syscallCount;
     }
 
     int scheduleInsertCount = 0;
