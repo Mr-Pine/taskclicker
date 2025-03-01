@@ -11,15 +11,15 @@ group = "de.mr-pine"
 version = "1.0-SNAPSHOT"
 
 repositories {
-    mavenLocal()
     mavenCentral()
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
+    maven("https://mvn.packages.mr-pine.de/releases")
     google()
-    /*maven {
+    maven {
         name = "sonatype-snapshots"
         url = uri("https://s01.oss.sonatype.org/content/repositories/snapshots/")
         isAllowInsecureProtocol = false
-    }*/
+    }
 }
 
 dependencies {
@@ -29,8 +29,8 @@ dependencies {
     // With compose.desktop.common you will also lose @Preview functionality
     implementation(compose.desktop.currentOs)
     implementation(compose.components.resources)
-    implementation("me.bechberger:bpf:0.1.1-scx-enabled-SNAPSHOT")
-    annotationProcessor("me.bechberger:bpf:0.1.1-scx-enabled-SNAPSHOT")
+    implementation("me.bechberger:bpf:0.1.2")
+    annotationProcessor("me.bechberger:bpf:0.1.2")
     implementation("org.jetbrains.androidx.navigation:navigation-compose:2.8.0-alpha12")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.6.2")
